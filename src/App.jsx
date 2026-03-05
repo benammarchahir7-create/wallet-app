@@ -439,7 +439,8 @@ export default function App() {
 
       if(!response.ok) {
         const err = await response.json().catch(() => ({}));
-        throw new Error((err?.error || `Erreur ${response.status}`) + (err?.keyDebug ? ` [${err.keyDebug}]` : ""));
+        const detail = err?.detail ? err.detail.slice(0,80) : "";
+        throw new Error((err?.error || `Erreur ${response.status}`) + (detail ? `: ${detail}` : ""));
       }
 
       const data = await response.json();
