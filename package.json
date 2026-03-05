@@ -1,17 +1,7 @@
 {
-  "name": "wallet-app",
+  "name": "netlify-functions",
   "version": "1.0.0",
-  "private": true,
   "dependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-scripts": "5.0.1"
-  },
-  "scripts": {
-    "build": "react-scripts build",
-    "start": "react-scripts start"
-  },
-  "browserslist": {
-    "production": [">0.2%", "not dead", "not op_mini all"]
+    "mindee": "^4.0.0"
   }
 }
