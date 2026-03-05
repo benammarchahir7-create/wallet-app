@@ -1,13 +1,12 @@
-const https = require("https");
+const mindee = require("mindee");
 
 exports.handler = async (event) => {
   if (event.httpMethod !== "POST") {
     return { statusCode: 405, body: "Method Not Allowed" };
   }
 
-  const key = (process.env.MINDEE_API_KEY || "").replace(/\s/g, "");
-
-  if (!key) {
+  const apiKey = (process.env.MINDEE_API_KEY || "").replace(/\s/g, "");
+  if (!apiKey) {
     return { statusCode: 500, body: JSON.stringify({ error: "Cle manquante" }) };
   }
 
@@ -18,55 +17,50 @@ exports.handler = async (event) => {
     }
 
     const imageBuffer = Buffer.from(imageBase64, "base64");
-    const mime = mimeType || "image/jpeg";
-    const filename = mime === "application/pdf" ? "ticket.pdf" : "ticket.jpg";
-    const boundary = "----FormBoundary" + Math.random().toString(36).slice(2);
-    const CRLF = "\r\n";
+    const filename = (mimeType === "application/pdf") ? "ticket.pdf" : "ticket.jpg";
 
-    const part1 = Buffer.from(
-      "--" + boundary + CRLF +
-      `Content-Disposition: form-data; name="document"; filename="${filename}"` + CRLF +
-      `Content-Type: ${mime}` + CRLF +
-      CRLF
-    );
-    const part2 = imageBuffer;
-    const part3 = Buffer.from(CRLF + "--" + boundary + "--" + CRLF);
-    const bodyBuf = Buffer.concat([part1, part2, part3]);
+    const mindeeClient = new mindee.Client({ apiKey });
 
-    const result = await new Promise((resolve, reject) => {
-      const req = https.request({
-        hostname: "api.mindee.net",
-        path: "/v1/products/mindee/expense_receipts/v5/predict",
-        method: "POST",
-        headers: {
-          "Authorization": `Token ${key}`,
-          "Content-Type": `multipart/form-data; boundary=${boundary}`,
-          "Content-Length": bodyBuf.length,
-        },
-      }, (res) => {
-        let raw = "";
-        res.on("data", d => raw += d);
-        res.on("end", () => resolve({ status: res.statusCode, body: raw }));
-      });
-      req.on("error", reject);
-      req.write(bodyBuf);
-      req.end();
+    const inputSource = new mindee.BufferInput({
+      buffer: imageBuffer,
+      filename,
     });
 
-    if (result.status !== 200 && result.status !== 201) {
-      return {
-        statusCode: result.status,
-        body: JSON.stringify({ error: `Erreur Mindee ${result.status}`, detail: result.body }),
-      };
-    }
+    const response = await mindeeClient.enqueueAndGetResult(
+      mindee.product.Extraction,
+      inputSource,
+      {
+        modelId: "2eabe5ac-4090-4a06-a204-fc8ae7821577",
+      }
+    );
+
+    const fields = response.inference.result.fields;
+
+    // Extraire les données du ticket
+    const supplier   = fields.supplier_name?.value || fields.merchant_name?.value || "Inconnu";
+    const totalAmt   = fields.total_amount?.value ?? fields.total?.value ?? 0;
+    const dateRaw    = fields.date?.value || null;
+    const lineItems  = (fields.line_items || [])
+      .map(li => li.description || li.product_code || "Article")
+      .filter(Boolean)
+      .slice(0, 6);
 
     return {
       statusCode: 200,
       headers: { "Content-Type": "application/json" },
-      body: result.body,
+      body: JSON.stringify({
+        supplier,
+        totalAmt: parseFloat(totalAmt) || 0,
+        dateRaw,
+        lineItems,
+        confidence: 90,
+      }),
     };
 
   } catch (err) {
-    return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: err.message }),
+    };
   }
 };
