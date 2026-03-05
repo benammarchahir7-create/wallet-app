@@ -157,44 +157,51 @@ const TicketCard = ({ticket, index, total, onClick, uiTheme}) => {
       padding:"18px 20px 16px",
       display:"flex", flexDirection:"column",
     }}>
-      {/* Header : icone + nom + montant/date */}
-      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:10}}>
-        <div style={{width:40,height:40,borderRadius:12,background:`${accentColor}20`,border:`1px solid ${accentColor}30`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-          <Icon type="receipt" size={20} opacity={0.8} color={accentColor}/>
-        </div>
+      {/* Header : photo ou icone + nom + montant */}
+      <div style={{display:"flex",alignItems:"flex-start",gap:10,marginBottom:8}}>
+        {ticket.photo
+          ? <img src={ticket.photo} alt="" style={{width:44,height:44,borderRadius:10,objectFit:"cover",flexShrink:0,border:`1px solid ${accentColor}30`}}/>
+          : <div style={{width:44,height:44,borderRadius:12,background:`${accentColor}20`,border:`1px solid ${accentColor}30`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+              <Icon type="receipt" size={20} opacity={0.8} color={accentColor}/>
+            </div>
+        }
         <div style={{flex:1,minWidth:0}}>
-          <div style={{color:textColor,fontSize:19,fontWeight:700,fontFamily:"'Courier Prime',monospace",letterSpacing:0,lineHeight:1.1}}>
+          <div style={{color:textColor,fontSize:17,fontWeight:700,fontFamily:"'Courier Prime',monospace",lineHeight:1.1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
             {ticket.label}
           </div>
-          <div style={{color:subColor,fontSize:10,fontFamily:"'Courier Prime',monospace",marginTop:2}}>{ticket.date}</div>
+          <div style={{color:subColor,fontSize:9,fontFamily:"'Courier Prime',monospace",marginTop:2}}>{ticket.date}</div>
         </div>
         <div style={{textAlign:"right",flexShrink:0}}>
-          <div style={{color:accentColor,fontSize:20,fontWeight:700,fontFamily:"'Space Mono',monospace",letterSpacing:-1,lineHeight:1}}>
+          <div style={{color:accentColor,fontSize:18,fontWeight:700,fontFamily:"'Space Mono',monospace",letterSpacing:-1,lineHeight:1}}>
             {fmt(ticket.amount)}
           </div>
-          <div style={{color:subColor,fontSize:8,fontFamily:"'Space Mono',monospace",marginTop:2,textTransform:"uppercase",textAlign:"right"}}>Total</div>
+          <div style={{color:subColor,fontSize:7,fontFamily:"'Space Mono',monospace",marginTop:1,textTransform:"uppercase"}}>{ticket.devise||"EUR"}</div>
         </div>
       </div>
 
-      {/* Pointilles haut */}
-      <div style={{borderTop:`1px dashed ${subColor}`,marginBottom:8,opacity:0.4}}/>
+      {/* Pointilles */}
+      <div style={{borderTop:`1px dashed ${subColor}`,marginBottom:6,opacity:0.4}}/>
 
-      {/* Articles */}
-      <div style={{flex:1,display:"flex",flexDirection:"column",gap:4}}>
-        {ticket.items?.slice(0,3).map((item,i)=>(
-          <div key={i} style={{display:"flex",justifyContent:"space-between",color:subColor,fontSize:11,fontFamily:"'Courier Prime',monospace"}}>
-            <span>{item}</span><span>···</span>
+      {/* 6 champs info */}
+      <div style={{flex:1,display:"flex",flexDirection:"column",gap:3}}>
+        {[
+          {k:"N° ticket", v:ticket.numTicket||"—"},
+          {k:"TVA",       v:ticket.tva>0?fmt(ticket.tva):"—"},
+          {k:"Articles",  v:ticket.items?.length>0?ticket.items[0].slice(0,22)+"…":"—"},
+        ].map(({k,v})=>(
+          <div key={k} style={{display:"flex",justifyContent:"space-between",color:subColor,fontSize:10,fontFamily:"'Courier Prime',monospace"}}>
+            <span style={{opacity:0.6}}>{k}</span><span>{v}</span>
           </div>
         ))}
-        {ticket.items?.length>3&&(
-          <div style={{color:subColor,fontSize:10,fontStyle:"italic",fontFamily:"'Courier Prime',monospace"}}>
-            + {ticket.items.length-3} autres
+        {ticket.items?.length>1&&(
+          <div style={{color:subColor,fontSize:9,fontStyle:"italic",fontFamily:"'Courier Prime',monospace",opacity:0.5}}>
+            + {ticket.items.length-1} articles
           </div>
         )}
       </div>
 
-      {/* Pointilles bas + code-barres */}
-      <div style={{borderTop:`1px dashed ${subColor}`,marginTop:4,paddingTop:6,opacity:0.4}}/>
+      {/* Code-barres */}
+      <div style={{borderTop:`1px dashed ${subColor}`,marginTop:4,paddingTop:5,opacity:0.4}}/>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <Barcode color={textColor} opacity={0.35}/>
         <div style={{color:subColor,fontSize:7,fontFamily:"'Space Mono',monospace",letterSpacing:0.5}}>
@@ -207,8 +214,33 @@ const TicketCard = ({ticket, index, total, onClick, uiTheme}) => {
 };
 
 // ─── ARCHIVE FOLDER ───────────────────────────────────────────────
-const ArchiveFolder = ({folder, tickets, index, isOpen, onToggle, onEdit, onDelete, uiTheme}) => (
+const ArchiveFolder = ({folder, tickets, index, isOpen, onToggle, onEdit, onDelete, uiTheme}) => {
+  const [photoView, setPhotoView] = React.useState(null);
+
+  const exportCSV = (e) => {
+    e.stopPropagation();
+    const header = "Enseigne,Date,Total,N° Ticket,TVA,Devise\n";
+    const rows = tickets.map(t =>
+      [t.label,t.date,t.amount,t.numTicket||"",t.tva||0,t.devise||"EUR"].map(v=>`"${v}"`).join(",")
+    ).join("\n");
+    const blob = new Blob([header+rows], {type:"text/csv;charset=utf-8;"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href=url; a.download=`${folder.label}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
   <div style={{position:"relative",zIndex:isOpen?100:10+index,marginBottom:isOpen?12:-(BODY_H-SHOW_PX),transition:"margin-bottom 0.4s cubic-bezier(0.4,0,0.2,1),transform 0.3s ease",transform:isOpen?"scale(1.012)":"scale(1)"}}>
+    {/* Photo viewer overlay */}
+    {photoView&&(
+      <div style={{position:"fixed",inset:0,zIndex:9999,background:"rgba(0,0,0,0.92)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onClick={()=>setPhotoView(null)}>
+        <img src={photoView} alt="Ticket" style={{maxWidth:"100%",maxHeight:"90vh",borderRadius:12,objectFit:"contain"}}/>
+        <div style={{position:"absolute",top:20,right:20,width:36,height:36,borderRadius:"50%",background:"rgba(255,255,255,0.15)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 1l12 12M13 1L1 13" stroke="white" strokeWidth="2" strokeLinecap="round"/></svg>
+        </div>
+      </div>
+    )}
     <div style={{width:80,height:20,background:`linear-gradient(to top,${YF.main},#FBF2A8)`,borderRadius:"8px 8px 0 0",marginLeft:"auto",marginRight:20+index*8,border:"1px solid rgba(139,96,32,0.18)",borderBottom:"none"}}/>
     <div className="acard" onClick={onToggle} style={{background:"linear-gradient(175deg,#F7E070 0%,#EEBF35 65%,#D9A820 100%)",borderRadius:14,cursor:"pointer",boxShadow:isOpen?"0 16px 36px rgba(0,0,0,0.4)":"0 4px 12px rgba(0,0,0,0.25)",border:"1px solid rgba(139,96,32,0.22)",position:"relative",overflow:"hidden"}}>
       <div style={{position:"absolute",top:0,left:0,right:0,height:20,background:"linear-gradient(180deg,rgba(255,255,255,0.22) 0%,transparent 100%)",borderRadius:"14px 14px 0 0",pointerEvents:"none"}}/>
@@ -221,24 +253,32 @@ const ArchiveFolder = ({folder, tickets, index, isOpen, onToggle, onEdit, onDele
           <div style={{color:"rgba(80,40,0,0.55)",fontSize:9.5,fontFamily:"Outfit,sans-serif",marginTop:2}}>{tickets.length} ticket{tickets.length!==1?"s":""}</div>
         </div>
         <div style={{display:"flex",gap:6,alignItems:"center"}}>
+          <button onClick={exportCSV} style={{border:"none",background:"rgba(100,60,0,0.15)",borderRadius:7,padding:"5px 8px",color:"rgba(80,40,0,0.8)",fontSize:10,cursor:"pointer",fontFamily:"Outfit,sans-serif",fontWeight:600}}>CSV</button>
           <button onClick={e=>{e.stopPropagation();onEdit();}} style={{border:"none",background:"rgba(100,60,0,0.12)",borderRadius:7,padding:"5px 8px",color:"rgba(80,40,0,0.7)",fontSize:10,cursor:"pointer",fontFamily:"Outfit,sans-serif"}}>Modifier</button>
           <svg style={{transition:"transform 0.3s",transform:isOpen?"rotate(90deg)":"rotate(0deg)",opacity:0.5}} width="10" height="16" viewBox="0 0 6 10" fill="none"><path d="M1 1l4 4-4 4" stroke={YF.text} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </div>
       </div>
     </div>
-    <div style={{maxHeight:isOpen?500:0,overflow:"hidden",transition:"max-height 0.45s cubic-bezier(0.4,0,0.2,1),opacity 0.3s",opacity:isOpen?1:0}}>
+    <div style={{maxHeight:isOpen?600:0,overflow:"hidden",transition:"max-height 0.45s cubic-bezier(0.4,0,0.2,1),opacity 0.3s",opacity:isOpen?1:0}}>
       <div style={{background:"#1a1a1a",borderRadius:"0 0 14px 14px",border:"1px solid rgba(255,255,255,0.07)",borderTop:"none",padding:"6px 0 6px"}}>
-        {tickets.length===0&&<div style={{textAlign:"center",color:"rgba(255,255,255,0.2)",padding:"16px 0",fontSize:12,fontFamily:"Outfit,sans-serif"}}>Aucun ticket archive</div>}
+        {tickets.length===0&&<div style={{textAlign:"center",color:"rgba(255,255,255,0.2)",padding:"16px 0",fontSize:12,fontFamily:"Outfit,sans-serif"}}>Aucun ticket archivé</div>}
         {tickets.map((t,i)=>{
           const ct=getCardTheme(uiTheme, t.cardTheme||0);
           return (
             <div key={t.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",animation:`rowSlide 0.3s cubic-bezier(0.22,1,0.36,1) ${i*0.05}s both`,borderBottom:i<tickets.length-1?"1px solid rgba(255,255,255,0.04)":"none"}}>
-              <div style={{width:28,height:28,borderRadius:8,background:ct.grad,flexShrink:0,boxShadow:"0 2px 6px rgba(0,0,0,0.3)"}}/>
+              {/* Photo miniature ou couleur */}
+              {t.photo
+                ? <img src={t.photo} alt="" onClick={e=>{e.stopPropagation();setPhotoView(t.photo);}} style={{width:36,height:36,borderRadius:8,objectFit:"cover",flexShrink:0,cursor:"pointer",border:"1px solid rgba(255,255,255,0.1)"}}/>
+                : <div style={{width:36,height:36,borderRadius:8,background:ct.grad,flexShrink:0,boxShadow:"0 2px 6px rgba(0,0,0,0.3)"}}/>
+              }
               <div style={{flex:1,minWidth:0}}>
                 <div style={{color:"white",fontSize:13,fontWeight:500,fontFamily:"Outfit,sans-serif"}}>{t.label}</div>
-                <div style={{color:"rgba(255,255,255,0.3)",fontSize:10,fontFamily:"Outfit,sans-serif",marginTop:1}}>{t.date}</div>
+                <div style={{color:"rgba(255,255,255,0.3)",fontSize:10,fontFamily:"Outfit,sans-serif",marginTop:1}}>{t.date} · {t.devise||"EUR"}</div>
               </div>
-              <div style={{color:"white",fontSize:13,fontFamily:"Outfit,sans-serif",flexShrink:0}}>{fmt(t.amount)}</div>
+              <div style={{textAlign:"right",flexShrink:0}}>
+                <div style={{color:"white",fontSize:13,fontFamily:"Outfit,sans-serif"}}>{fmt(t.amount)}</div>
+                {t.tva>0&&<div style={{color:"rgba(255,255,255,0.3)",fontSize:9,fontFamily:"Outfit,sans-serif"}}>TVA {fmt(t.tva)}</div>}
+              </div>
             </div>
           );
         })}
@@ -248,7 +288,8 @@ const ArchiveFolder = ({folder, tickets, index, isOpen, onToggle, onEdit, onDele
       </div>
     </div>
   </div>
-);
+  );
+};
 
 // ─── BAR CHART ────────────────────────────────────────────────────
 const BarChart = ({data, color}) => {
@@ -408,30 +449,76 @@ export default function App() {
         });
       }
 
-      // Compresse l'image
-      const imgUrl = await new Promise((resolve, reject) => {
+      // Stocker la photo originale en base64 (reduite pour stockage)
+      const photoBase64 = await new Promise((resolve, reject) => {
         const img = new Image();
         const url = URL.createObjectURL(file);
         img.onload = () => {
           URL.revokeObjectURL(url);
           const canvas = document.createElement("canvas");
-          const MAX = 1600;
+          const MAX = 800;
           let w = img.width, h = img.height;
-          if(w > MAX || h > MAX) {
-            if(w > h) { h = Math.round(h*MAX/w); w = MAX; }
-            else { w = Math.round(w*MAX/h); h = MAX; }
-          }
+          if(w > MAX || h > MAX) { if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;} }
           canvas.width = w; canvas.height = h;
           canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-          resolve(canvas.toDataURL("image/jpeg", 0.9));
+          resolve(canvas.toDataURL("image/jpeg", 0.7));
+        };
+        img.onerror = () => resolve(null);
+        img.src = URL.createObjectURL(file);
+      });
+
+      // Pretraitement image : agrandissement + noir/blanc + contraste
+      const imgUrl = await new Promise((resolve, reject) => {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        img.onload = () => {
+          URL.revokeObjectURL(url);
+
+          // 1. Agrandir pour meilleure lisibilite OCR
+          const SCALE = 2.5;
+          const MAX = 3000;
+          let w = img.width * SCALE, h = img.height * SCALE;
+          if(w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+          if(h > MAX) { w = Math.round(w * MAX / h); h = MAX; }
+
+          const canvas = document.createElement("canvas");
+          canvas.width = w; canvas.height = h;
+          const ctx = canvas.getContext("2d");
+
+          // 2. Fond blanc
+          ctx.fillStyle = "#fff";
+          ctx.fillRect(0, 0, w, h);
+
+          // 3. Dessiner l'image
+          ctx.drawImage(img, 0, 0, w, h);
+
+          // 4. Convertir en niveaux de gris + augmenter contraste
+          const imageData = ctx.getImageData(0, 0, w, h);
+          const data = imageData.data;
+          for(let i = 0; i < data.length; i += 4) {
+            // Niveaux de gris
+            const gray = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
+            // Contraste fort : seuillage adaptatif
+            const contrasted = gray < 128 ? Math.max(0, gray - 40) : Math.min(255, gray + 40);
+            data[i] = data[i+1] = data[i+2] = contrasted;
+          }
+          ctx.putImageData(imageData, 0, 0);
+
+          resolve(canvas.toDataURL("image/png"));
         };
         img.onerror = () => reject(new Error("Lecture image impossible"));
         img.src = URL.createObjectURL(file);
       });
 
-      // OCR avec Tesseract (français + anglais)
+      // OCR avec Tesseract optimise pour tickets de caisse
       const worker = await window.Tesseract.createWorker(["fra", "eng"], 1, {
         logger: m => { if(m.status === "recognizing text") setScanPct(Math.round(10 + m.progress * 80)); }
+      });
+      // PSM 6 = bloc de texte uniforme, ideal pour tickets
+      await worker.setParameters({
+        tessedit_pageseg_mode: "6",
+        preserve_interword_spaces: "1",
+        tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzÀàÂâÉéÈèÊêËëÎîÏïÔôÙùÛûÜüÇç0123456789.,€$/:- ",
       });
       const { data: { text } } = await worker.recognize(imgUrl);
       await worker.terminate();
@@ -439,7 +526,7 @@ export default function App() {
       clearInterval(iv);
       setScanPct(100);
 
-      // ---- PARSING OCR AMELIORE ----
+      // ---- PARSING OCR - 6 CHAMPS ----
       const lines = text.split("\n").map(l => l.trim()).filter(l => l.length > 1);
       const linesLow = lines.map(l => l.toLowerCase());
 
@@ -486,6 +573,34 @@ export default function App() {
         } catch {}
       }
 
+      // DEVISE
+      var devise = "EUR";
+      if(text.includes("$")) devise = "USD";
+      else if(text.includes("£")) devise = "GBP";
+      else if(text.includes("CHF")) devise = "CHF";
+
+      // TVA
+      var tva = 0;
+      const tvaKw = ["tva","t.v.a","vat","tax"];
+      for(let i = 0; i < lines.length; i++) {
+        const ll = linesLow[i];
+        if(tvaKw.some(k => ll.includes(k))) {
+          const nums = lines[i].match(/\d+[.,]\d{2}/g);
+          if(nums) { const v = parseFloat(nums[nums.length-1].replace(",",".")); if(v > 0 && v < totalAmt) tva = v; }
+        }
+      }
+
+      // NUMERO TICKET
+      var numTicket = "";
+      const numKw = ["ticket n","n° ticket","n°","ticket:","recu n","receipt","#","caisse"];
+      for(let i = 0; i < lines.length; i++) {
+        const ll = linesLow[i];
+        if(numKw.some(k => ll.includes(k))) {
+          const nums = lines[i].match(/\d{4,}/);
+          if(nums) { numTicket = nums[0]; break; }
+        }
+      }
+
       // ARTICLES : lignes avec prix avant le total
       const endIdx = totalLineIdx > 0 ? totalLineIdx : lines.length;
       var items = lines.slice(0, endIdx)
@@ -495,12 +610,16 @@ export default function App() {
         .filter(l => l.length > 2 && !/^[\d.,€]+$/.test(l));
 
       setAiResult({
-        label:     nameLine.slice(0, 30),
-        amount:    parseFloat(totalAmt.toFixed(2)),
-        date:      displayDate,
-        items:     items.length > 0 ? items : ["Ticket scanné"],
-        cardTheme: nextTheme(),
+        label:      nameLine.slice(0, 30),
+        amount:     parseFloat(totalAmt.toFixed(2)),
+        date:       displayDate,
+        items:      items.length > 0 ? items : ["Ticket scanné"],
+        cardTheme:  nextTheme(),
         confidence: Math.min(95, 60 + items.length * 8),
+        photo:      photoBase64,
+        tva:        tva,
+        devise:     devise,
+        numTicket:  numTicket,
       });
 
       setAiPhase(3);
@@ -777,15 +896,43 @@ export default function App() {
                     <div style={{color:subColor,fontSize:7,fontFamily:"'Space Mono',monospace",letterSpacing:0.5}}>TXN-{String(detailT.id).padStart(9,"0")}</div>
                   </div>
                 </div>
-                <div style={{padding:"16px 18px 0"}}>
+                <div style={{padding:"16px 18px 0",maxHeight:"55vh",overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
+
+                  {/* Photo du ticket */}
+                  {detailT.photo&&(
+                    <div style={{marginBottom:14,borderRadius:14,overflow:"hidden",border:"1px solid rgba(255,255,255,0.08)"}}>
+                      <img src={detailT.photo} alt="Ticket" style={{width:"100%",maxHeight:220,objectFit:"cover",display:"block"}}/>
+                    </div>
+                  )}
+
+                  {/* 6 champs info */}
+                  <div style={{background:"rgba(255,255,255,0.04)",borderRadius:14,padding:"4px 0",marginBottom:14,border:"1px solid rgba(255,255,255,0.07)"}}>
+                    {[
+                      {k:"Enseigne",  v:detailT.label},
+                      {k:"Date",      v:detailT.date},
+                      {k:"Total",     v:fmt(detailT.amount)},
+                      {k:"N° ticket", v:detailT.numTicket||"—"},
+                      {k:"TVA",       v:detailT.tva>0?fmt(detailT.tva):"—"},
+                      {k:"Devise",    v:detailT.devise||"EUR"},
+                    ].map(({k,v},i,arr)=>(
+                      <div key={k} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px",borderBottom:i<arr.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}>
+                        <span style={{color:"rgba(255,255,255,0.35)",fontSize:11,fontFamily:"Outfit,sans-serif"}}>{k}</span>
+                        <span style={{color:"rgba(255,255,255,0.85)",fontSize:12,fontFamily:"'Courier Prime',monospace",fontWeight:600}}>{v}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Articles */}
                   {detailT.items?.length>0&&(
                     <div style={{background:"rgba(255,255,255,0.05)",borderRadius:14,overflow:"hidden",marginBottom:14}}>
+                      <div style={{padding:"8px 14px 4px",color:"rgba(255,255,255,0.3)",fontSize:9,letterSpacing:1.5,textTransform:"uppercase",fontFamily:"'Space Mono',monospace"}}>Articles</div>
                       {detailT.items.map((item,i)=>(
-                        <div key={i} style={{padding:"11px 14px",borderBottom:i<detailT.items.length-1?"1px solid rgba(255,255,255,0.05)":"none",color:"rgba(255,255,255,0.6)",fontSize:13,fontFamily:"'Courier Prime',monospace"}}>{item}</div>
+                        <div key={i} style={{padding:"9px 14px",borderBottom:i<detailT.items.length-1?"1px solid rgba(255,255,255,0.05)":"none",color:"rgba(255,255,255,0.6)",fontSize:12,fontFamily:"'Courier Prime',monospace"}}>{item}</div>
                       ))}
                     </div>
                   )}
-                  {detailT.archived&&<div style={{background:"rgba(255,200,80,0.08)",borderRadius:10,padding:"8px 14px",marginBottom:14,border:"1px solid rgba(255,200,80,0.15)"}}><span style={{color:"rgba(255,200,80,0.7)",fontSize:11,fontFamily:"Outfit,sans-serif"}}>Archive dans {folders.find(f=>f.id===detailT.archiveFolder)?.label||"un dossier"}</span></div>}
+
+                  {detailT.archived&&<div style={{background:"rgba(255,200,80,0.08)",borderRadius:10,padding:"8px 14px",marginBottom:14,border:"1px solid rgba(255,200,80,0.15)"}}><span style={{color:"rgba(255,200,80,0.7)",fontSize:11,fontFamily:"Outfit,sans-serif"}}>Archivé dans {folders.find(f=>f.id===detailT.archiveFolder)?.label||"un dossier"}</span></div>}
                   <div style={{display:"flex",gap:8,paddingBottom:40}}>
                     {!detailT.archived
                       ?<button className="abtn" onClick={()=>{setArchivePick(detailT);setDetailT(null);}} style={{flex:1,height:48,borderRadius:14,border:"none",background:`linear-gradient(135deg,${YF.main},#E8C85A)`,color:"#0A0A00",fontSize:13,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,fontFamily:"Outfit,sans-serif"}}>
