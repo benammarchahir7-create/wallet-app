@@ -445,8 +445,8 @@ export default function App() {
 
       // MONTANT TOTAL : cherche ligne avec mot-cle total/ttc/net/payer
       const totalKw = ["total","ttc","net a payer","montant","a payer","net","sum","amount","avoir"];
-      let totalAmt = 0;
-      let totalLineIdx = -1;
+      var totalAmt = 0;
+      var totalLineIdx = -1;
       for(let i = 0; i < lines.length; i++) {
         const ll = linesLow[i];
         if(totalKw.some(k => ll.includes(k))) {
@@ -465,7 +465,7 @@ export default function App() {
 
       // NOM DU COMMERCE : premieres lignes, evite les lignes parasites
       const skipW = ["ticket","caisse","bienvenue","merci","bonjour","www","tel","fax","tva","siret","siren","adresse","rue","avenue","boulevard","cedex","receipt","invoice"];
-      const nameLine = lines.slice(0, 8).find(l => {
+      var nameLine = lines.slice(0, 8).find(l => {
         const ll = l.toLowerCase();
         return l.length >= 3 &&
           !skipW.some(w => ll.includes(w)) &&
@@ -476,7 +476,7 @@ export default function App() {
 
       // DATE
       const dateMatch = text.match(/(\d{1,2})[/\.\-](\d{1,2})[/\.\-](\d{2,4})/);
-      let displayDate = formatDate(new Date());
+      var displayDate = formatDate(new Date());
       if(dateMatch) {
         try {
           const [,d,m,y] = dateMatch;
@@ -488,7 +488,7 @@ export default function App() {
 
       // ARTICLES : lignes avec prix avant le total
       const endIdx = totalLineIdx > 0 ? totalLineIdx : lines.length;
-      const items = lines.slice(0, endIdx)
+      var items = lines.slice(0, endIdx)
         .filter(l => /\d+[.,]\d{2}/.test(l) && l.length > 4)
         .slice(0, 6)
         .map(l => l.replace(/\s*\d+[.,]\d{2}\s*[€]?\s*$/, "").replace(/^\d+\s+/, "").trim())
