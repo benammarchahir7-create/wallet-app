@@ -402,12 +402,26 @@ export default function App() {
       // Phase 2 : passage en mode "Reconnaissance IA..."
       setTimeout(() => setAiPhase(2), 1800);
 
-      // Encode image en base64 pour le proxy Netlify
+      // Compresse et encode l'image avant envoi
       const imageBase64 = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload  = () => resolve(reader.result.split(",")[1]);
-        reader.onerror = () => reject(new Error("Lecture fichier impossible"));
-        reader.readAsDataURL(file);
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        img.onload = () => {
+          URL.revokeObjectURL(url);
+          const canvas = document.createElement("canvas");
+          const MAX = 1200;
+          let w = img.width, h = img.height;
+          if (w > MAX || h > MAX) {
+            if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+            else { w = Math.round(w * MAX / h); h = MAX; }
+          }
+          canvas.width = w; canvas.height = h;
+          canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+          const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
+          resolve(dataUrl.split(",")[1]);
+        };
+        img.onerror = () => reject(new Error("Lecture image impossible"));
+        img.src = url;
       });
 
       // Appel via proxy Netlify Function (evite CORS, cle securisee)
