@@ -1,4 +1,3 @@
-// netlify/functions/scan.js
 const https = require("https");
 
 exports.handler = async (event) => {
@@ -6,11 +5,17 @@ exports.handler = async (event) => {
     return { statusCode: 405, body: "Method Not Allowed" };
   }
 
-  const MINDEE_API_KEY = process.env.MINDEE_API_KEY;
+  const MINDEE_API_KEY = (process.env.MINDEE_API_KEY || "").trim();
+  
+  // Debug: affiche les premiers/derniers chars de la cle
+  const keyDebug = MINDEE_API_KEY 
+    ? `len=${MINDEE_API_KEY.length} start=${MINDEE_API_KEY.slice(0,8)} end=${MINDEE_API_KEY.slice(-4)}`
+    : "VIDE";
+
   if (!MINDEE_API_KEY) {
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: "Cle Mindee manquante" }),
+      body: JSON.stringify({ error: "Cle manquante", debug: keyDebug }),
     };
   }
 
@@ -23,13 +28,11 @@ exports.handler = async (event) => {
     const imageBuffer = Buffer.from(imageBase64, "base64");
     const boundary = "WalletBoundary" + Date.now();
     const filename = mimeType === "application/pdf" ? "ticket.pdf" : "ticket.jpg";
-
     const CRLF = "\r\n";
     const header = Buffer.from(
       "--" + boundary + CRLF +
       'Content-Disposition: form-data; name="document"; filename="' + filename + '"' + CRLF +
-      "Content-Type: " + mimeType + CRLF +
-      CRLF
+      "Content-Type: " + mimeType + CRLF + CRLF
     );
     const footer = Buffer.from(CRLF + "--" + boundary + "--" + CRLF);
     const body = Buffer.concat([header, imageBuffer, footer]);
@@ -41,7 +44,7 @@ exports.handler = async (event) => {
           path: "/v1/products/mindee/expense_receipts/v5/predict",
           method: "POST",
           headers: {
-            "Authorization": "Token " + MINDEE_API_KEY.trim(),
+            "Authorization": "Token " + MINDEE_API_KEY,
             "Content-Type": "multipart/form-data; boundary=" + boundary,
             "Content-Length": body.length,
           },
@@ -49,10 +52,7 @@ exports.handler = async (event) => {
         (res) => {
           const chunks = [];
           res.on("data", (chunk) => chunks.push(chunk));
-          res.on("end", () => resolve({
-            status: res.statusCode,
-            body: Buffer.concat(chunks).toString("utf8"),
-          }));
+          res.on("end", () => resolve({ status: res.statusCode, body: Buffer.concat(chunks).toString("utf8") }));
         }
       );
       req.on("error", reject);
@@ -65,6 +65,7 @@ exports.handler = async (event) => {
         statusCode: mindeeResponse.status,
         body: JSON.stringify({
           error: "Erreur Mindee " + mindeeResponse.status,
+          keyDebug: keyDebug,
           detail: mindeeResponse.body,
         }),
       };
@@ -79,7 +80,7 @@ exports.handler = async (event) => {
   } catch (err) {
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: err.message }),
+      body: JSON.stringify({ error: err.message, keyDebug: keyDebug }),
     };
   }
 };
