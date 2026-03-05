@@ -149,6 +149,7 @@ const TicketCard = ({ticket, index, total, onClick, uiTheme}) => {
         :(index===total-1?"drop-shadow(0 -2px 1px rgba(0,0,0,0.35)) drop-shadow(0 20px 30px rgba(0,0,0,0.6))":"drop-shadow(0 -2px 1px rgba(0,0,0,0.28)) drop-shadow(0 8px 16px rgba(0,0,0,0.4))"),
 
     }}>
+      {ticket.unread&&<div style={{position:"absolute",top:12,right:12,zIndex:20,width:11,height:11,borderRadius:"50%",background:"#ff3b30",boxShadow:"0 0 8px rgba(255,59,48,0.9)",animation:"pulse 1.5s infinite",pointerEvents:"none"}}/>}
     <div className="receipt-shape-both" style={{
       width:"100%", height:"100%",
       background:ct.grad,
@@ -364,7 +365,7 @@ export default function App() {
 
   const submitManual = () => {
     if(!form.label||!form.amount) return;
-    const t={id:Date.now(),label:form.label.trim(),amount:parseFloat(form.amount.replace(",",".")||0),date:form.date?isoToDisplay(form.date):formatDate(new Date()),items:form.items?form.items.split(",").map(s=>s.trim()).filter(Boolean):[],cardTheme:nextTheme(),archived:false};
+    const t={id:Date.now(),label:form.label.trim(),amount:parseFloat(form.amount.replace(",",".")||0),date:form.date?isoToDisplay(form.date):formatDate(new Date()),items:form.items?form.items.split(",").map(s=>s.trim()).filter(Boolean):[],cardTheme:nextTheme(),archived:false,unread:true};
     setTickets(prev=>[t,...prev]); setForm({label:"",amount:"",date:"",items:""}); setAddMode(null); setAddSheet(false); showToast("Ticket ajoute");
   };
 
@@ -490,7 +491,7 @@ export default function App() {
   };
 
   const confirmAi = () => {
-    setTickets(prev => [{ id: Date.now(), ...aiResult, archived: false }, ...prev]);
+    setTickets(prev => [{ id: Date.now(), ...aiResult, archived: false, unread: true }, ...prev]);
     setAiPhase(0);
     setAiResult(null);
     showToast("Ticket ajouté par IA ✓");
@@ -525,7 +526,7 @@ export default function App() {
                 </div>
               :<div style={{position:"relative",height:stackH,margin:"0 auto",maxWidth:354}}>
                   {activeTickets.map((ticket,i)=>(
-                    <TicketCard key={ticket.id} ticket={ticket} index={i} total={total} onClick={()=>setDetailT(ticket)} uiTheme={uiTheme}/>
+                    <TicketCard key={ticket.id} ticket={ticket} index={i} total={total} onClick={()=>{setDetailT(ticket);setTickets(p=>p.map(x=>x.id===ticket.id?{...x,unread:false}:x));}} uiTheme={uiTheme}/>
                   ))}
                 </div>
             }
