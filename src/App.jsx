@@ -474,16 +474,6 @@ export default function App() {
     <div style={{width:"100%",height:"100dvh",background:theme.bg,display:"flex",flexDirection:"column",overflow:"hidden",position:"relative",WebkitOverflowScrolling:"touch"}}>
       <style>{CSS}</style>
 
-        {/* STATUS BAR */}
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 26px 0",flexShrink:0}}>
-          <span style={{color:"white",fontSize:15,fontWeight:700,fontFamily:"Outfit,sans-serif",width:40}}>9:41</span>
-          <div style={{width:120,height:34,background:"#000",borderRadius:22,border:"1px solid #222"}}/>
-          <div style={{display:"flex",gap:6,alignItems:"center"}}>
-            <svg width="16" height="11" viewBox="0 0 16 11" fill="white"><rect x="0" y="3" width="3" height="8" rx="1" opacity=".35"/><rect x="4.5" y="2" width="3" height="9" rx="1" opacity=".6"/><rect x="9" y="0" width="3" height="11" rx="1" opacity=".85"/><rect x="13.5" y="0" width="2.5" height="11" rx="1"/></svg>
-            <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x="0.5" y="0.5" width="20" height="10" rx="3" stroke="white" strokeOpacity=".3"/><rect x="2" y="2" width="15" height="7" rx="1.5" fill="white"/></svg>
-          </div>
-        </div>
-
         {/* VIEWS */}
         <div style={{display:"flex",flexDirection:"column",flex:1,overflow:"hidden",animation:viewAnim==="in"?"viewIn 0.28s cubic-bezier(0.22,1,0.36,1) both":"viewOut 0.15s ease-in both",pointerEvents:viewAnim==="out"?"none":"auto"}}>
 
@@ -830,8 +820,8 @@ export default function App() {
         )}
 
         {toast&&<div style={{position:"absolute",top:70,left:16,right:16,zIndex:260,background:"#1c1c1e",border:"1px solid rgba(255,255,255,0.08)",borderRadius:18,padding:"13px 18px",color:"rgba(255,255,255,0.85)",fontSize:13,fontFamily:"Outfit,sans-serif",textAlign:"center",animation:"toastIn 0.3s ease",boxShadow:"0 12px 40px rgba(0,0,0,0.6)"}}>{toast}</div>}
+        <input ref={fileRef} type="file" hidden onChange={onFile} accept="image/*,application/pdf"/>
       </div>
-      <input ref={fileRef} type="file" hidden onChange={onFile} accept="image/*,application/pdf"/>
     </div>
   );
 }
