@@ -391,80 +391,92 @@ export default function App() {
     e.target.value = "";
     setAddSheet(false); setAddMode(null); setAiPhase(1); setScanPct(0);
 
-    // Animation de progression pendant l'appel API
     let p = 0;
-    const iv = setInterval(() => {
-      p += 1.2;
-      if(p < 85) setScanPct(Math.round(p));
-    }, 80);
+    const iv = setInterval(() => { p += 0.8; if(p < 90) setScanPct(Math.round(p)); }, 100);
 
     try {
-      // Phase 2 : passage en mode "Reconnaissance IA..."
-      setTimeout(() => setAiPhase(2), 1800);
+      setTimeout(() => setAiPhase(2), 1000);
 
-      // Compresse et encode l'image avant envoi
-      const imageBase64 = await new Promise((resolve, reject) => {
+      // Charge Tesseract depuis CDN
+      if(!window.Tesseract) {
+        await new Promise((res, rej) => {
+          const s = document.createElement("script");
+          s.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
+          s.onload = res; s.onerror = rej;
+          document.head.appendChild(s);
+        });
+      }
+
+      // Compresse l'image
+      const imgUrl = await new Promise((resolve, reject) => {
         const img = new Image();
         const url = URL.createObjectURL(file);
         img.onload = () => {
           URL.revokeObjectURL(url);
           const canvas = document.createElement("canvas");
-          const MAX = 1200;
+          const MAX = 1600;
           let w = img.width, h = img.height;
-          if (w > MAX || h > MAX) {
-            if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
-            else { w = Math.round(w * MAX / h); h = MAX; }
+          if(w > MAX || h > MAX) {
+            if(w > h) { h = Math.round(h*MAX/w); w = MAX; }
+            else { w = Math.round(w*MAX/h); h = MAX; }
           }
           canvas.width = w; canvas.height = h;
           canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-          const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
-          resolve(dataUrl.split(",")[1]);
+          resolve(canvas.toDataURL("image/jpeg", 0.9));
         };
         img.onerror = () => reject(new Error("Lecture image impossible"));
-        img.src = url;
+        img.src = URL.createObjectURL(file);
       });
 
-      // Appel via proxy Netlify Function (evite CORS, cle securisee)
-      const response = await fetch("/api/scan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          imageBase64,
-          mimeType: file.type || "image/jpeg",
-        }),
+      // OCR avec Tesseract (français + anglais)
+      const worker = await window.Tesseract.createWorker(["fra", "eng"], 1, {
+        logger: m => { if(m.status === "recognizing text") setScanPct(Math.round(10 + m.progress * 80)); }
       });
+      const { data: { text } } = await worker.recognize(imgUrl);
+      await worker.terminate();
 
       clearInterval(iv);
       setScanPct(100);
 
-      if(!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        const detail = err?.detail ? err.detail.slice(0,80) : "";
-        throw new Error((err?.error || `Erreur ${response.status}`) + (detail ? `: ${detail}` : ""));
-      }
+      // Parse le texte OCR
+      const lines = text.split("\n").map(l => l.trim()).filter(l => l.length > 1);
 
-      const data = await response.json();
+      // Trouve le montant total (cherche le plus grand nombre)
+      const amounts = [];
+      lines.forEach(line => {
+        const matches = line.match(/\d+[.,]\d{2}/g);
+        if(matches) matches.forEach(m => amounts.push(parseFloat(m.replace(",","."))));
+      });
+      const totalAmt = amounts.length > 0 ? Math.max(...amounts) : 0;
 
-      // Nouvelle structure API v2 Mindee
-      const supplier   = data.supplier   || "Inconnu";
-      const totalAmt   = data.totalAmt   ?? 0;
-      const confidence = data.confidence ?? 85;
-      const dateRaw    = data.dateRaw    || null;
-      const lineItems  = data.lineItems  || [];
+      // Trouve le nom (premiere ligne non vide significative)
+      const nameLine = lines.find(l => l.length > 3 && !/^\d/.test(l) && !/^[€$]/.test(l)) || "Ticket scanné";
 
-      // Formatage de la date
+      // Trouve la date
+      const dateMatch = text.match(/(\d{1,2}[/\-.](\d{1,2})[/\-.](\d{2,4}))/);
       let displayDate = formatDate(new Date());
-      if(dateRaw) {
-        try { displayDate = formatDate(new Date(dateRaw + "T00:00:00")); } catch {}
+      if(dateMatch) {
+        try {
+          const parts = dateMatch[1].split(/[/\-.]/);
+          const d = new Date(parts[2].length===2?"20"+parts[2]:parts[2], parseInt(parts[1])-1, parseInt(parts[0]));
+          if(!isNaN(d)) displayDate = formatDate(d);
+        } catch {}
       }
+
+      // Articles : lignes avec prix
+      const items = lines
+        .filter(l => /\d+[.,]\d{2}/.test(l) && l.length > 4)
+        .slice(0, 6)
+        .map(l => l.replace(/\s+\d+[.,]\d{2}.*$/, "").trim())
+        .filter(l => l.length > 1);
 
       setAiResult({
-        label:      supplier,
-        amount:     parseFloat(totalAmt.toFixed(2)),
-        date:       displayDate,
-        items:      lineItems.length > 0 ? lineItems : ["Ticket scanné"],
-        cardTheme:  nextTheme(),
-        confidence: confidence,
+        label:     nameLine.slice(0, 30),
+        amount:    parseFloat(totalAmt.toFixed(2)),
+        date:      displayDate,
+        items:     items.length > 0 ? items : ["Ticket scanné"],
+        cardTheme: nextTheme(),
+        confidence: Math.min(95, 60 + amounts.length * 5),
       });
 
       setAiPhase(3);
@@ -473,7 +485,7 @@ export default function App() {
       clearInterval(iv);
       setAiPhase(0);
       setAiResult(null);
-      showToast("Scan échoué : " + (err.message || "Erreur réseau"));
+      showToast("Scan échoué : " + (err.message || "Erreur"));
     }
   };
 
@@ -807,7 +819,7 @@ export default function App() {
               <div style={{width:200,height:260,borderRadius:20,border:"1.5px solid rgba(99,102,241,0.5)",position:"relative",overflow:"hidden",background:"rgba(99,102,241,0.04)",marginBottom:28}}>
                 {["tl","tr","bl","br"].map(c=><div key={c} style={{position:"absolute",width:22,height:22,top:c.includes("t")?10:"auto",bottom:c.includes("b")?10:"auto",left:c.includes("l")?10:"auto",right:c.includes("r")?10:"auto",borderTop:c.includes("t")?"2px solid #6366f1":"none",borderBottom:c.includes("b")?"2px solid #6366f1":"none",borderLeft:c.includes("l")?"2px solid #6366f1":"none",borderRight:c.includes("r")?"2px solid #6366f1":"none"}}/>)}
                 <div style={{position:"absolute",left:0,right:0,height:2,background:"linear-gradient(90deg,transparent,#6366f1,transparent)",animation:"scanMove 1.8s ease-in-out infinite",boxShadow:"0 0 14px #6366f1"}}/>
-                {aiPhase===2&&<div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(99,102,241,0.08)"}}><div style={{color:"#6366f1",fontSize:12,fontFamily:"Outfit,sans-serif",animation:"pulse 1s infinite",textAlign:"center",lineHeight:1.8}}>Mindee OCR...<br/>Extraction des données...</div></div>}
+                {aiPhase===2&&<div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(99,102,241,0.08)"}}><div style={{color:"#6366f1",fontSize:12,fontFamily:"Outfit,sans-serif",animation:"pulse 1s infinite",textAlign:"center",lineHeight:1.8}}>Lecture du ticket...<br/>Extraction des données...</div></div>}
               </div>
               <div style={{color:"white",fontSize:14,fontWeight:500,fontFamily:"Outfit,sans-serif",marginBottom:10}}>{aiPhase===1?"Scan en cours...":"Reconnaissance IA..."}</div>
               {aiPhase===1&&<div style={{width:180,height:3,background:"rgba(255,255,255,0.1)",borderRadius:2,overflow:"hidden"}}><div style={{width:scanPct+"%",height:"100%",background:"linear-gradient(90deg,#6366f1,#8b5cf6)",borderRadius:2,transition:"width 0.06s"}}/></div>}
