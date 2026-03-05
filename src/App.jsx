@@ -821,7 +821,6 @@ export default function App() {
 
         {toast&&<div style={{position:"absolute",top:70,left:16,right:16,zIndex:260,background:"#1c1c1e",border:"1px solid rgba(255,255,255,0.08)",borderRadius:18,padding:"13px 18px",color:"rgba(255,255,255,0.85)",fontSize:13,fontFamily:"Outfit,sans-serif",textAlign:"center",animation:"toastIn 0.3s ease",boxShadow:"0 12px 40px rgba(0,0,0,0.6)"}}>{toast}</div>}
         <input ref={fileRef} type="file" hidden onChange={onFile} accept="image/*,application/pdf"/>
-      </div>
     </div>
   );
 }
