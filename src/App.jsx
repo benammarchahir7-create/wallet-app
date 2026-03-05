@@ -500,7 +500,7 @@ export default function App() {
         date:      displayDate,
         items:     items.length > 0 ? items : ["Ticket scanné"],
         cardTheme: nextTheme(),
-        confidence: Math.min(95, 60 + amounts.length * 5),
+        confidence: Math.min(95, 60 + items.length * 8),
       });
 
       setAiPhase(3);
