@@ -402,18 +402,23 @@ export default function App() {
       // Phase 2 : passage en mode "Reconnaissance IA..."
       setTimeout(() => setAiPhase(2), 1800);
 
-      // Appel direct Mindee
-      const formData = new FormData();
-      formData.append("document", file);
+      // Encode image en base64 pour le proxy Netlify
+      const imageBase64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload  = () => resolve(reader.result.split(",")[1]);
+        reader.onerror = () => reject(new Error("Lecture fichier impossible"));
+        reader.readAsDataURL(file);
+      });
 
-      const response = await fetch(
-        "https://api.mindee.net/v1/products/mindee/expense_receipts/v5/predict",
-        {
-          method: "POST",
-          headers: { "Authorization": "Token md_cLK8T-bX_lTGkAbYqJKiHfN_MIoy0-OfaLQzt8_alio" },
-          body: formData,
-        }
-      );
+      // Appel via proxy Netlify Function (evite CORS, cle securisee)
+      const response = await fetch("/api/scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          imageBase64,
+          mimeType: file.type || "image/jpeg",
+        }),
+      });
 
       clearInterval(iv);
       setScanPct(100);
