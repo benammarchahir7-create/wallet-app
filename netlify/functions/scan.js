@@ -5,82 +5,68 @@ exports.handler = async (event) => {
     return { statusCode: 405, body: "Method Not Allowed" };
   }
 
-  const MINDEE_API_KEY = (process.env.MINDEE_API_KEY || "").trim();
-  
-  // Debug: affiche les premiers/derniers chars de la cle
-  const keyDebug = MINDEE_API_KEY 
-    ? `len=${MINDEE_API_KEY.length} start=${MINDEE_API_KEY.slice(0,8)} end=${MINDEE_API_KEY.slice(-4)}`
-    : "VIDE";
+  const key = (process.env.MINDEE_API_KEY || "").replace(/\s/g, "");
 
-  if (!MINDEE_API_KEY) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: "Cle manquante", debug: keyDebug }),
-    };
+  if (!key) {
+    return { statusCode: 500, body: JSON.stringify({ error: "Cle manquante" }) };
   }
 
   try {
     const { imageBase64, mimeType } = JSON.parse(event.body || "{}");
-    if (!imageBase64 || !mimeType) {
+    if (!imageBase64) {
       return { statusCode: 400, body: JSON.stringify({ error: "Image manquante" }) };
     }
 
     const imageBuffer = Buffer.from(imageBase64, "base64");
-    const boundary = "WalletBoundary" + Date.now();
-    const filename = mimeType === "application/pdf" ? "ticket.pdf" : "ticket.jpg";
+    const mime = mimeType || "image/jpeg";
+    const filename = mime === "application/pdf" ? "ticket.pdf" : "ticket.jpg";
+    const boundary = "----FormBoundary" + Math.random().toString(36).slice(2);
     const CRLF = "\r\n";
-    const header = Buffer.from(
-      "--" + boundary + CRLF +
-      'Content-Disposition: form-data; name="document"; filename="' + filename + '"' + CRLF +
-      "Content-Type: " + mimeType + CRLF + CRLF
-    );
-    const footer = Buffer.from(CRLF + "--" + boundary + "--" + CRLF);
-    const body = Buffer.concat([header, imageBuffer, footer]);
 
-    const mindeeResponse = await new Promise((resolve, reject) => {
-      const req = https.request(
-        {
-          hostname: "api.mindee.net",
-          path: "/v1/products/mindee/expense_receipts/v5/predict",
-          method: "POST",
-          headers: {
-            "Authorization": "Token " + MINDEE_API_KEY,
-            "Content-Type": "multipart/form-data; boundary=" + boundary,
-            "Content-Length": body.length,
-          },
+    const part1 = Buffer.from(
+      "--" + boundary + CRLF +
+      `Content-Disposition: form-data; name="document"; filename="${filename}"` + CRLF +
+      `Content-Type: ${mime}` + CRLF +
+      CRLF
+    );
+    const part2 = imageBuffer;
+    const part3 = Buffer.from(CRLF + "--" + boundary + "--" + CRLF);
+    const bodyBuf = Buffer.concat([part1, part2, part3]);
+
+    const result = await new Promise((resolve, reject) => {
+      const req = https.request({
+        hostname: "api.mindee.net",
+        path: "/v1/products/mindee/expense_receipts/v5/predict",
+        method: "POST",
+        headers: {
+          "Authorization": `Token ${key}`,
+          "Content-Type": `multipart/form-data; boundary=${boundary}`,
+          "Content-Length": bodyBuf.length,
         },
-        (res) => {
-          const chunks = [];
-          res.on("data", (chunk) => chunks.push(chunk));
-          res.on("end", () => resolve({ status: res.statusCode, body: Buffer.concat(chunks).toString("utf8") }));
-        }
-      );
+      }, (res) => {
+        let raw = "";
+        res.on("data", d => raw += d);
+        res.on("end", () => resolve({ status: res.statusCode, body: raw }));
+      });
       req.on("error", reject);
-      req.write(body);
+      req.write(bodyBuf);
       req.end();
     });
 
-    if (mindeeResponse.status !== 201 && mindeeResponse.status !== 200) {
+    if (result.status !== 200 && result.status !== 201) {
       return {
-        statusCode: mindeeResponse.status,
-        body: JSON.stringify({
-          error: "Erreur Mindee " + mindeeResponse.status,
-          keyDebug: keyDebug,
-          detail: mindeeResponse.body,
-        }),
+        statusCode: result.status,
+        body: JSON.stringify({ error: `Erreur Mindee ${result.status}`, detail: result.body }),
       };
     }
 
     return {
       statusCode: 200,
       headers: { "Content-Type": "application/json" },
-      body: mindeeResponse.body,
+      body: result.body,
     };
 
   } catch (err) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: err.message, keyDebug: keyDebug }),
-    };
+    return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
   }
 };
