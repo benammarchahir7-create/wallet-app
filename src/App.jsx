@@ -50,7 +50,7 @@ const parseDate = (str) => {
 const formatDate = (d) => d.toLocaleDateString("fr-FR",{day:"numeric",month:"short",year:"numeric"});
 // isoToDisplay: "2026-03-03" -> "3 mars 2026"
 const isoToDisplay = (iso) => iso ? formatDate(new Date(iso+"T00:00:00")) : "";
-const PERIODS = [{label:"7 j",days:7},{label:"1 mois",days:30},{label:"3 mois",days:90},{label:"1 an",days:365}];
+const PERIODS = [{label:"7 j",days:7},{label:"1 mois",days:30},{label:"3 mois",days:90},{label:"1 an",days:365},{label:"Tout",days:36500}];
 
 const CARD_PALETTES = {
   mono: [
@@ -439,37 +439,60 @@ export default function App() {
       clearInterval(iv);
       setScanPct(100);
 
-      // Parse le texte OCR
+      // ---- PARSING OCR AMELIORE ----
       const lines = text.split("\n").map(l => l.trim()).filter(l => l.length > 1);
+      const linesLow = lines.map(l => l.toLowerCase());
 
-      // Trouve le montant total (cherche le plus grand nombre)
-      const amounts = [];
-      lines.forEach(line => {
-        const matches = line.match(/\d+[.,]\d{2}/g);
-        if(matches) matches.forEach(m => amounts.push(parseFloat(m.replace(",","."))));
-      });
-      const totalAmt = amounts.length > 0 ? Math.max(...amounts) : 0;
+      // MONTANT TOTAL : cherche ligne avec mot-cle total/ttc/net/payer
+      const totalKw = ["total","ttc","net a payer","montant","a payer","net","sum","amount","avoir"];
+      let totalAmt = 0;
+      let totalLineIdx = -1;
+      for(let i = 0; i < lines.length; i++) {
+        const ll = linesLow[i];
+        if(totalKw.some(k => ll.includes(k))) {
+          const nums = lines[i].match(/\d+[.,]\d{2}/g);
+          if(nums) {
+            const val = parseFloat(nums[nums.length-1].replace(",","."));
+            if(val > totalAmt) { totalAmt = val; totalLineIdx = i; }
+          }
+        }
+      }
+      if(totalAmt === 0) {
+        const allA = [];
+        lines.forEach(l => { const m = l.match(/\d+[.,]\d{2}/g); if(m) m.forEach(v => allA.push(parseFloat(v.replace(",","."))))});
+        if(allA.length) totalAmt = Math.max(...allA);
+      }
 
-      // Trouve le nom (premiere ligne non vide significative)
-      const nameLine = lines.find(l => l.length > 3 && !/^\d/.test(l) && !/^[€$]/.test(l)) || "Ticket scanné";
+      // NOM DU COMMERCE : premieres lignes, evite les lignes parasites
+      const skipW = ["ticket","caisse","bienvenue","merci","bonjour","www","tel","fax","tva","siret","siren","adresse","rue","avenue","boulevard","cedex","receipt","invoice"];
+      const nameLine = lines.slice(0, 8).find(l => {
+        const ll = l.toLowerCase();
+        return l.length >= 3 &&
+          !skipW.some(w => ll.includes(w)) &&
+          !/^\d+$/.test(l) &&
+          !/^[€$%*#@]/.test(l) &&
+          !/^\d{2}[/.\-]/.test(l);
+      }) || lines[0] || "Ticket";
 
-      // Trouve la date
-      const dateMatch = text.match(/(\d{1,2}[/\-.](\d{1,2})[/\-.](\d{2,4}))/);
+      // DATE
+      const dateMatch = text.match(/(\d{1,2})[/\.\-](\d{1,2})[/\.\-](\d{2,4})/);
       let displayDate = formatDate(new Date());
       if(dateMatch) {
         try {
-          const parts = dateMatch[1].split(/[/\-.]/);
-          const d = new Date(parts[2].length===2?"20"+parts[2]:parts[2], parseInt(parts[1])-1, parseInt(parts[0]));
-          if(!isNaN(d)) displayDate = formatDate(d);
+          const [,d,m,y] = dateMatch;
+          const year = y.length===2?"20"+y:y;
+          const dt = new Date(parseInt(year), parseInt(m)-1, parseInt(d));
+          if(!isNaN(dt) && dt.getFullYear()>=2000) displayDate = formatDate(dt);
         } catch {}
       }
 
-      // Articles : lignes avec prix
-      const items = lines
+      // ARTICLES : lignes avec prix avant le total
+      const endIdx = totalLineIdx > 0 ? totalLineIdx : lines.length;
+      const items = lines.slice(0, endIdx)
         .filter(l => /\d+[.,]\d{2}/.test(l) && l.length > 4)
         .slice(0, 6)
-        .map(l => l.replace(/\s+\d+[.,]\d{2}.*$/, "").trim())
-        .filter(l => l.length > 1);
+        .map(l => l.replace(/\s*\d+[.,]\d{2}\s*[€]?\s*$/, "").replace(/^\d+\s+/, "").trim())
+        .filter(l => l.length > 2 && !/^[\d.,€]+$/.test(l));
 
       setAiResult({
         label:     nameLine.slice(0, 30),
@@ -533,10 +556,17 @@ export default function App() {
           </div>
           <div style={{position:"absolute",bottom:56,left:0,right:0,zIndex:80,background:"rgba(10,10,10,0.95)",backdropFilter:"blur(24px)",borderTop:"1px solid rgba(255,255,255,0.07)",padding:"10px 18px 12px"}}>
             <div style={{display:"flex",gap:6,marginBottom:9}}>
-              {PERIODS.map((p,i)=><button key={i} onClick={()=>setPeriod(i)} style={{flex:1,height:26,borderRadius:9,border:"none",cursor:"pointer",background:period===i?`${theme.accent}33`:"rgba(255,255,255,0.05)",color:period===i?theme.accent:"rgba(255,255,255,0.3)",fontSize:10,fontWeight:period===i?600:400,fontFamily:"Outfit,sans-serif",transition:"all 0.2s"}}>{p.label}</button>)}
+              {PERIODS.map((p,i)=>{
+                const pCutoff=new Date(); pCutoff.setDate(pCutoff.getDate()-p.days);
+                const hasUnread=tickets.some(t=>!t.archived&&t.unread&&parseDate(t.date)>=pCutoff);
+                return <button key={i} onClick={()=>setPeriod(i)} style={{flex:1,height:26,borderRadius:9,border:"none",cursor:"pointer",background:period===i?`${theme.accent}33`:"rgba(255,255,255,0.05)",color:period===i?theme.accent:"rgba(255,255,255,0.3)",fontSize:10,fontWeight:period===i?600:400,fontFamily:"Outfit,sans-serif",transition:"all 0.2s",position:"relative"}}>
+                  {p.label}
+                  {hasUnread&&<span style={{position:"absolute",top:3,right:4,width:6,height:6,borderRadius:"50%",background:"#ff3b30",boxShadow:"0 0 4px rgba(255,59,48,0.9)"}}/>}
+                </button>;
+              })}
             </div>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <span style={{color:"rgba(255,255,255,0.2)",fontSize:10,fontFamily:"Outfit,sans-serif"}}>Sur {PERIODS[period].label}</span>
+              <span style={{color:"rgba(255,255,255,0.2)",fontSize:10,fontFamily:"Outfit,sans-serif"}}>{period===4?"Tous les tickets":`Sur ${PERIODS[period].label}`}</span>
               <div style={{display:"flex",gap:16,alignItems:"center"}}>
                 <div style={{textAlign:"center"}}><div style={{color:"white",fontSize:17,fontWeight:500,fontFamily:"Outfit,sans-serif",lineHeight:1}}>{fmt(periodStats.total)}</div><div style={{color:"rgba(255,255,255,0.25)",fontSize:9,letterSpacing:1.5,textTransform:"uppercase",fontFamily:"Outfit,sans-serif",marginTop:2}}>depense</div></div>
                 <div style={{width:1,height:22,background:"rgba(255,255,255,0.08)"}}/>
