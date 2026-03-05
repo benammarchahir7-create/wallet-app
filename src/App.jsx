@@ -444,18 +444,13 @@ export default function App() {
       }
 
       const data = await response.json();
-      const pred = data?.document?.inference?.prediction;
-      if(!pred) throw new Error("Réponse inattendue de Mindee");
 
-      // Extraction des données du ticket
-      const supplier   = pred.supplier_name?.value  || "Inconnu";
-      const totalAmt   = pred.total_amount?.value   ?? 0;
-      const confidence = Math.round((pred.total_amount?.confidence ?? 0.85) * 100);
-      const dateRaw    = pred.date?.value            || null;
-      const lineItems  = (pred.line_items || [])
-        .map(li => li.description || li.product_code || "Article")
-        .filter(Boolean)
-        .slice(0, 6);
+      // Nouvelle structure API v2 Mindee
+      const supplier   = data.supplier   || "Inconnu";
+      const totalAmt   = data.totalAmt   ?? 0;
+      const confidence = data.confidence ?? 85;
+      const dateRaw    = data.dateRaw    || null;
+      const lineItems  = data.lineItems  || [];
 
       // Formatage de la date
       let displayDate = formatDate(new Date());
