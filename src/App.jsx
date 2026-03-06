@@ -332,7 +332,7 @@ function usePersist(key, init) {
 
 // ─── APP ──────────────────────────────────────────────────────────
 export default function App() {
-  const [tickets,    setTickets]    = usePersist("wallet_tickets", INIT_TICKETS);
+  const [tickets,    setTickets]    = usePersist("wallet_tickets", []);
   const [folders,    setFolders]    = usePersist("wallet_folders", INIT_FOLDERS);
   const [uiTheme,    setUiTheme]    = usePersist("wallet_theme",   "classic");
   const [view,       setView]       = useState("home");
