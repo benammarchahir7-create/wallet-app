@@ -131,7 +131,7 @@ const INIT_TICKETS = [
 // ─── TICKET CARD ─────────────────────────────────────────────────
 const PEEK = 96, CARD_H = 210;
 
-const TicketCard = ({ticket, index, total, onClick, uiTheme}) => {
+const TicketCard = ({ticket, index, total, onClick, onPhotoClick, uiTheme}) => {
   const ct = getCardTheme(uiTheme, ticket.cardTheme||0);
   const textColor  = ct.light ? "rgba(20,10,0,0.9)"  : "rgba(255,255,255,0.95)";
   const subColor   = ct.light ? "rgba(20,10,0,0.45)" : "rgba(255,255,255,0.35)";
@@ -160,7 +160,7 @@ const TicketCard = ({ticket, index, total, onClick, uiTheme}) => {
       {/* Header : photo ou icone + nom + montant */}
       <div style={{display:"flex",alignItems:"flex-start",gap:10,marginBottom:8}}>
         {ticket.photo
-          ? <img src={ticket.photo} alt="" style={{width:44,height:44,borderRadius:10,objectFit:"cover",flexShrink:0,border:`1px solid ${accentColor}30`}}/>
+          ? <img src={ticket.photo} alt="" onClick={e=>{e.stopPropagation();onPhotoClick&&onPhotoClick(ticket.photo);}} style={{width:44,height:44,borderRadius:10,objectFit:"cover",flexShrink:0,border:`1px solid ${accentColor}30`,cursor:"zoom-in"}}/>
           : <div style={{width:44,height:44,borderRadius:12,background:`${accentColor}20`,border:`1px solid ${accentColor}30`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
               <Icon type="receipt" size={20} opacity={0.8} color={accentColor}/>
             </div>
@@ -268,7 +268,12 @@ const ArchiveFolder = ({folder, tickets, index, isOpen, onToggle, onEdit, onDele
             <div key={t.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",animation:`rowSlide 0.3s cubic-bezier(0.22,1,0.36,1) ${i*0.05}s both`,borderBottom:i<tickets.length-1?"1px solid rgba(255,255,255,0.04)":"none"}}>
               {/* Photo miniature ou couleur */}
               {t.photo
-                ? <img src={t.photo} alt="" onClick={e=>{e.stopPropagation();setPhotoView(t.photo);}} style={{width:36,height:36,borderRadius:8,objectFit:"cover",flexShrink:0,cursor:"pointer",border:"1px solid rgba(255,255,255,0.1)"}}/>
+                ? <div style={{position:"relative",flexShrink:0}}>
+                    <img src={t.photo} alt="" onClick={e=>{e.stopPropagation();setPhotoView(t.photo);}} style={{width:36,height:36,borderRadius:8,objectFit:"cover",cursor:"pointer",border:"1px solid rgba(255,255,255,0.1)",display:"block"}}/>
+                    <a href={t.photo} download="ticket.jpg" onClick={e=>e.stopPropagation()} style={{position:"absolute",bottom:-2,right:-2,width:16,height:16,borderRadius:"50%",background:"#6366f1",display:"flex",alignItems:"center",justifyContent:"center",textDecoration:"none"}}>
+                      <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M4 1v4M2 4l2 2 2-2M1 7h6" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    </a>
+                  </div>
                 : <div style={{width:36,height:36,borderRadius:8,background:ct.grad,flexShrink:0,boxShadow:"0 2px 6px rgba(0,0,0,0.3)"}}/>
               }
               <div style={{flex:1,minWidth:0}}>
@@ -337,6 +342,7 @@ export default function App() {
   const [addSheet,   setAddSheet]   = useState(false);
   const [addMode,    setAddMode]    = useState(null);
   const [detailT,    setDetailT]    = useState(null);
+  const [photoViewer, setPhotoViewer] = useState(null);
   const [archivePick,setArchivePick]= useState(null);
   const [folderModal,setFolderModal]= useState(false);
   const [editFolder, setEditFolder] = useState(null);
@@ -530,13 +536,18 @@ export default function App() {
       const lines = text.split("\n").map(l => l.trim()).filter(l => l.length > 1);
       const linesLow = lines.map(l => l.toLowerCase());
 
-      // MONTANT TOTAL : cherche ligne avec mot-cle total/ttc/net/payer
-      const totalKw = ["total","ttc","net a payer","montant","a payer","net","sum","amount","avoir"];
+      // MONTANT TOTAL : priorite sur mots-cles exacts puis fallback
+      // Priorite 1 : "total ttc", "net a payer", "montant du" (les plus fiables)
+      const totalKwHigh = ["total ttc","net à payer","net a payer","montant total","total net","à payer","a payer","total à payer"];
+      // Priorite 2 : "total" seul, "ttc", "sum"
+      const totalKwMid  = ["total","ttc","sum","net"];
       var totalAmt = 0;
       var totalLineIdx = -1;
+
+      // Passe 1 : mots-cles haute priorite
       for(let i = 0; i < lines.length; i++) {
         const ll = linesLow[i];
-        if(totalKw.some(k => ll.includes(k))) {
+        if(totalKwHigh.some(k => ll.includes(k))) {
           const nums = lines[i].match(/\d+[.,]\d{2}/g);
           if(nums) {
             const val = parseFloat(nums[nums.length-1].replace(",","."));
@@ -544,10 +555,28 @@ export default function App() {
           }
         }
       }
+      // Passe 2 : mots-cles moyens si rien trouvé
       if(totalAmt === 0) {
-        const allA = [];
-        lines.forEach(l => { const m = l.match(/\d+[.,]\d{2}/g); if(m) m.forEach(v => allA.push(parseFloat(v.replace(",","."))))});
-        if(allA.length) totalAmt = Math.max(...allA);
+        for(let i = 0; i < lines.length; i++) {
+          const ll = linesLow[i];
+          if(totalKwMid.some(k => ll.includes(k))) {
+            const nums = lines[i].match(/\d+[.,]\d{2}/g);
+            if(nums) {
+              const val = parseFloat(nums[nums.length-1].replace(",","."));
+              if(val > totalAmt) { totalAmt = val; totalLineIdx = i; }
+            }
+          }
+        }
+      }
+      // Passe 3 : fallback derniere ligne avec un montant (souvent le total sur les tickets)
+      if(totalAmt === 0) {
+        for(let i = lines.length-1; i >= 0; i--) {
+          const nums = lines[i].match(/\d+[.,]\d{2}/g);
+          if(nums) {
+            const val = parseFloat(nums[nums.length-1].replace(",","."));
+            if(val > 0) { totalAmt = val; totalLineIdx = i; break; }
+          }
+        }
       }
 
       // NOM DU COMMERCE : premieres lignes, evite les lignes parasites
@@ -668,7 +697,7 @@ export default function App() {
                 </div>
               :<div style={{position:"relative",height:stackH,margin:"0 auto",maxWidth:354}}>
                   {activeTickets.map((ticket,i)=>(
-                    <TicketCard key={ticket.id} ticket={ticket} index={i} total={total} onClick={()=>{setDetailT(ticket);setTickets(p=>p.map(x=>x.id===ticket.id?{...x,unread:false}:x));}} uiTheme={uiTheme}/>
+                    <TicketCard key={ticket.id} ticket={ticket} index={i} total={total} onClick={()=>{setDetailT(ticket);setTickets(p=>p.map(x=>x.id===ticket.id?{...x,unread:false}:x));}} onPhotoClick={setPhotoViewer} uiTheme={uiTheme}/>
                   ))}
                 </div>
             }
@@ -900,7 +929,7 @@ export default function App() {
 
                   {/* Photo du ticket */}
                   {detailT.photo&&(
-                    <div style={{marginBottom:14,borderRadius:14,overflow:"hidden",border:"1px solid rgba(255,255,255,0.08)"}}>
+                    <div style={{marginBottom:14,borderRadius:14,overflow:"hidden",border:"1px solid rgba(255,255,255,0.08)",cursor:"zoom-in"}} onClick={()=>setPhotoViewer(detailT.photo)}>
                       <img src={detailT.photo} alt="Ticket" style={{width:"100%",maxHeight:220,objectFit:"cover",display:"block"}}/>
                     </div>
                   )}
@@ -1024,6 +1053,18 @@ export default function App() {
           </div>
         )}
 
+        {photoViewer&&(
+          <div style={{position:"fixed",inset:0,zIndex:9999,background:"rgba(0,0,0,0.95)",display:"flex",alignItems:"center",justifyContent:"center",padding:20,animation:"fadeIn 0.2s"}} onClick={()=>setPhotoViewer(null)}>
+            <img src={photoViewer} alt="Ticket" style={{maxWidth:"100%",maxHeight:"90vh",borderRadius:12,objectFit:"contain",boxShadow:"0 20px 60px rgba(0,0,0,0.8)"}}/>
+            <div style={{position:"absolute",top:24,right:24,width:40,height:40,borderRadius:"50%",background:"rgba(255,255,255,0.15)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",backdropFilter:"blur(4px)"}}>
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 1l12 12M13 1L1 13" stroke="white" strokeWidth="2" strokeLinecap="round"/></svg>
+            </div>
+            <a href={photoViewer} download="ticket.jpg" onClick={e=>e.stopPropagation()} style={{position:"absolute",bottom:40,left:"50%",transform:"translateX(-50%)",background:"rgba(255,255,255,0.15)",backdropFilter:"blur(8px)",border:"1px solid rgba(255,255,255,0.2)",borderRadius:14,padding:"12px 24px",color:"white",fontSize:13,fontWeight:600,fontFamily:"Outfit,sans-serif",textDecoration:"none",display:"flex",alignItems:"center",gap:8}}>
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v8M3 6l4 4 4-4M1 11v2h12v-2" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              Télécharger la photo
+            </a>
+          </div>
+        )}
         {toast&&<div style={{position:"absolute",top:70,left:16,right:16,zIndex:260,background:"#1c1c1e",border:"1px solid rgba(255,255,255,0.08)",borderRadius:18,padding:"13px 18px",color:"rgba(255,255,255,0.85)",fontSize:13,fontFamily:"Outfit,sans-serif",textAlign:"center",animation:"toastIn 0.3s ease",boxShadow:"0 12px 40px rgba(0,0,0,0.6)"}}>{toast}</div>}
         <input ref={fileRef} type="file" hidden onChange={onFile} accept="image/*,application/pdf"/>
     </div>
