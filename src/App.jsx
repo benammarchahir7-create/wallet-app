@@ -703,7 +703,7 @@ function App({ onReset }) {
   const HBtnStyle = { width: 34, height: 34, borderRadius: 17, border: "none", background: "rgba(255,255,255,0.08)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" };
 
   return (
-    <div style={{ width: "100%", height: "100dvh", background: theme.bg, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative", paddingTop: "env(safe-area-inset-top, 0px)", paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
+    <div style={{ width: "100%", height: "100dvh", background: theme.bg, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
       <style>{CSS}</style>
 
       {!isOnline && (
@@ -728,12 +728,12 @@ function App({ onReset }) {
           </div>
           <div style={{ flex: 1, overflowY: "auto", padding: "20px 18px 200px", position: "relative", overscrollBehavior: "contain" }}>
             {total === 0 ? <div style={{ textAlign: "center", paddingTop: 80, color: "rgba(255,255,255,0.15)" }}><Icon type="receipt" size={44} opacity={0.15} /><div style={{ fontFamily: "Outfit,sans-serif", fontSize: 13, marginTop: 14, lineHeight: 1.6 }}>Aucun ticket<br />Appuyez sur + pour en ajouter</div></div>
-              : <div style={{ position: "relative", height: stackH, margin: "0 auto", maxWidth: 354 }}>
+              : <div style={{ position: "relative", height: stackH, margin: "0 auto", maxWidth: 354, width: "100%" }}>
                   {activeTickets.map((ticket, i) => <TicketCard key={ticket.id} ticket={ticket} index={i} total={total} onClick={() => { setDetailT(ticket); setTickets(p => p.map(x => x.id === ticket.id ? { ...x, unread: false } : x)); }} onPhotoClick={setPhotoViewer} uiTheme={uiTheme} />)}
                 </div>
             }
           </div>
-          <div style={{ position: "absolute", bottom: 56, left: 0, right: 0, zIndex: 80, background: "rgba(10,10,10,0.95)", backdropFilter: "blur(24px)", borderTop: "1px solid rgba(255,255,255,0.07)", padding: "10px 18px 12px" }}>
+          <div style={{ position: "absolute", bottom: "calc(56px + env(safe-area-inset-bottom, 0px))", left: 0, right: 0, zIndex: 80, background: "rgba(10,10,10,0.95)", backdropFilter: "blur(24px)", borderTop: "1px solid rgba(255,255,255,0.07)", padding: "10px 18px 12px" }}>
             <div style={{ display: "flex", gap: 6, marginBottom: 9 }}>
               {PERIODS.map((p, i) => {
                 const pc = new Date(); pc.setDate(pc.getDate() - p.days);
@@ -926,7 +926,7 @@ function App({ onReset }) {
 
       </div>
 
-      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "rgba(10,10,10,0.97)", zIndex: 90, backdropFilter: "blur(24px)", borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "rgba(10,10,10,0.97)", zIndex: 90, backdropFilter: "blur(24px)", borderTop: "1px solid rgba(255,255,255,0.07)", paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
         <div style={{ height: 56, display: "flex", alignItems: "center" }}>
           {[{ tab: "home", icon: "home", label: "Wallet", badge: prefs.notifUnread ? unreadCount : 0 }, { tab: "stats", icon: "stats", label: "Stats", badge: 0 }, { tab: "archive", icon: "archive", label: "Archives", badge: 0 }, { tab: "settings", icon: "settings", label: "Réglages", badge: 0 }].map(({ tab, icon, label, badge }) => (
             <button key={tab} className="nav-btn" onClick={() => { setActiveTab(tab); changeView(tab); }} style={{ flex: 1, border: "none", background: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, paddingBottom: 4, position: "relative" }}>
@@ -1236,9 +1236,10 @@ const CSS = `
   .nav-btn { transition: transform 0.15s cubic-bezier(0.34,1.56,0.64,1) }
   .nav-btn:active { transform: scale(0.88) }
   ::-webkit-scrollbar { display: none }
-  * { box-sizing: border-box; -webkit-font-smoothing: antialiased }
+  * { box-sizing: border-box; -webkit-font-smoothing: antialiased; touch-action: manipulation; }
   html, body { overflow: hidden; position: fixed; width: 100%; height: 100%; background: #0a0a0a; }
   html { height: -webkit-fill-available; }
   body { min-height: -webkit-fill-available; }
+  input, textarea, select { font-size: 16px !important; }
   input::placeholder { color: rgba(255,255,255,0.22) }
 `;
