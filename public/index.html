@@ -2,73 +2,37 @@
 <html lang="fr">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0a0a0a" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="theme-color" content="#050505" />
-    <title>Wallet</title>
-    <!-- Fonts bundlées localement - pas de Google CDN -->
-    <link rel="preload" href="%PUBLIC_URL%/fonts/Outfit-Regular.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href="%PUBLIC_URL%/fonts/Outfit-Bold.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href="%PUBLIC_URL%/fonts/SpaceMono-Regular.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href="%PUBLIC_URL%/fonts/CourierPrime-Regular.woff2" as="font" type="font/woff2" crossorigin />
-    <style>
-      /* Fonts locales — aucune requête externe */
-      @font-face {
-        font-family: 'Outfit';
-        src: url('/fonts/Outfit-Regular.woff2') format('woff2');
-        font-weight: 400;
-        font-display: swap;
-      }
-      @font-face {
-        font-family: 'Outfit';
-        src: url('/fonts/Outfit-Bold.woff2') format('woff2');
-        font-weight: 700;
-        font-display: swap;
-      }
-      @font-face {
-        font-family: 'Space Mono';
-        src: url('/fonts/SpaceMono-Regular.woff2') format('woff2');
-        font-weight: 400;
-        font-display: swap;
-      }
-      @font-face {
-        font-family: 'Space Mono';
-        src: url('/fonts/SpaceMono-Bold.woff2') format('woff2');
-        font-weight: 700;
-        font-display: swap;
-      }
-      @font-face {
-        font-family: 'Courier Prime';
-        src: url('/fonts/CourierPrime-Regular.woff2') format('woff2');
-        font-weight: 400;
-        font-display: swap;
-      }
-      @font-face {
-        font-family: 'Courier Prime';
-        src: url('/fonts/CourierPrime-Bold.woff2') format('woff2');
-        font-weight: 700;
-        font-display: swap;
-      }
+    <meta name="apple-mobile-web-app-title" content="tikit" />
+    <meta name="description" content="Votre portefeuille de tickets numérique" />
 
-      * { box-sizing: border-box; margin: 0; padding: 0; }
-      html, body, #root {
-        height: 100%;
-        width: 100%;
-        background: #050505;
-        overflow: hidden;
-        /* Safe area iOS (notch, home bar) */
-        padding-top: env(safe-area-inset-top);
-        padding-bottom: env(safe-area-inset-bottom);
-      }
-      /* Désactive le bounce scroll iOS */
-      body { overscroll-behavior: none; -webkit-overflow-scrolling: touch; }
-      /* Cache la scrollbar partout */
-      ::-webkit-scrollbar { display: none; }
-    </style>
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Apple Touch Icon (icône sur l'écran d'accueil iOS) -->
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+
+    <!-- Splash screens iOS (optionnel mais recommandé) -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+
+    <title>tikit</title>
   </head>
   <body>
-    <noscript>Cette application nécessite JavaScript.</noscript>
+    <noscript>Vous devez activer JavaScript pour utiliser tikit.</noscript>
     <div id="root"></div>
+
+    <!-- Enregistrement du Service Worker -->
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("/sw.js")
+            .then(() => console.log("tikit SW registered"))
+            .catch((err) => console.log("SW error:", err));
+        });
+      }
+    </script>
   </body>
 </html>
