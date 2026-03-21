@@ -209,7 +209,7 @@ const Onboarding = ({ onFinish }) => {
   const Illus = cur.Illus;
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 999, background: "#0a0a0a", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between", padding: "env(safe-area-inset-top, 0px) 0 max(env(safe-area-inset-bottom, 0px), 32px)", overflow: "hidden", backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 40px, rgba(255,255,255,0.012) 40px, rgba(255,255,255,0.012) 41px)" }}>
+    <div style={{ position: "fixed", inset: 0, zIndex: 999, background: "#0a0a0a", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between", padding: "0 0 40px", overflow: "hidden", backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 40px, rgba(255,255,255,0.012) 40px, rgba(255,255,255,0.012) 41px)" }}>
       <div style={{ position: "absolute", top: -60, left: "50%", transform: "translateX(-50%)", width: 320, height: 320, borderRadius: "50%", background: "radial-gradient(circle, " + cur.accent + "18 0%, transparent 70%)", transition: "background 0.5s", pointerEvents: "none" }} />
       <div style={{ width: "100%", display: "flex", justifyContent: "flex-end", padding: "18px 22px 0", zIndex: 2, boxSizing: "border-box" }}>
         {!isLast && <button onClick={() => onFinish({ name: "Vous", devise: "EUR" })} style={{ background: "none", border: "none", color: "#e0e0e0", opacity: 0.4, fontSize: 12, cursor: "pointer", fontFamily: "Outfit,sans-serif", letterSpacing: 1 }}>Passer</button>}
@@ -733,7 +733,7 @@ function App({ onReset }) {
                 </div>
             }
           </div>
-          <div style={{ position: "absolute", bottom: "calc(56px + env(safe-area-inset-bottom, 0px))", left: 0, right: 0, zIndex: 80, background: "rgba(10,10,10,0.95)", backdropFilter: "blur(24px)", borderTop: "1px solid rgba(255,255,255,0.07)", padding: "10px 18px 12px" }}>
+          <div style={{ position: "absolute", bottom: 56, left: 0, right: 0, zIndex: 80, background: "rgba(10,10,10,0.95)", backdropFilter: "blur(24px)", borderTop: "1px solid rgba(255,255,255,0.07)", padding: "10px 18px 12px" }}>
             <div style={{ display: "flex", gap: 6, marginBottom: 9 }}>
               {PERIODS.map((p, i) => {
                 const pc = new Date(); pc.setDate(pc.getDate() - p.days);
@@ -926,7 +926,7 @@ function App({ onReset }) {
 
       </div>
 
-      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "rgba(10,10,10,0.97)", zIndex: 90, backdropFilter: "blur(24px)", borderTop: "1px solid rgba(255,255,255,0.07)", paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
+      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "rgba(10,10,10,0.97)", zIndex: 90, backdropFilter: "blur(24px)", borderTop: "1px solid rgba(255,255,255,0.07)" }}>
         <div style={{ height: 56, display: "flex", alignItems: "center" }}>
           {[{ tab: "home", icon: "home", label: "Wallet", badge: prefs.notifUnread ? unreadCount : 0 }, { tab: "stats", icon: "stats", label: "Stats", badge: 0 }, { tab: "archive", icon: "archive", label: "Archives", badge: 0 }, { tab: "settings", icon: "settings", label: "Réglages", badge: 0 }].map(({ tab, icon, label, badge }) => (
             <button key={tab} className="nav-btn" onClick={() => { setActiveTab(tab); changeView(tab); }} style={{ flex: 1, border: "none", background: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, paddingBottom: 4, position: "relative" }}>
@@ -1237,9 +1237,9 @@ const CSS = `
   .nav-btn:active { transform: scale(0.88) }
   ::-webkit-scrollbar { display: none }
   * { box-sizing: border-box; -webkit-font-smoothing: antialiased; touch-action: manipulation; }
-  html, body { overflow: hidden; position: fixed; width: 100%; height: 100%; background: #0a0a0a; }
-  html { height: -webkit-fill-available; }
-  body { min-height: -webkit-fill-available; }
+  html { height: 100%; background: #0a0a0a; }
+  body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #0a0a0a; position: fixed; left: 0; top: 0; right: 0; bottom: 0; }
+  #root { width: 100%; height: 100%; display: flex; flex-direction: column; }
   input, textarea, select { font-size: 16px !important; }
   input::placeholder { color: rgba(255,255,255,0.22) }
 `;
