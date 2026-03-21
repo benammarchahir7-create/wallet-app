@@ -209,9 +209,9 @@ const Onboarding = ({ onFinish }) => {
   const Illus = cur.Illus;
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 999, background: "#0a0a0a", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between", padding: "0 0 52px", overflow: "hidden", backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 40px, rgba(255,255,255,0.012) 40px, rgba(255,255,255,0.012) 41px)" }}>
+    <div style={{ position: "fixed", inset: 0, zIndex: 999, background: "#0a0a0a", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between", padding: "env(safe-area-inset-top, 0px) 0 max(env(safe-area-inset-bottom, 0px), 32px)", overflow: "hidden", backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 40px, rgba(255,255,255,0.012) 40px, rgba(255,255,255,0.012) 41px)" }}>
       <div style={{ position: "absolute", top: -60, left: "50%", transform: "translateX(-50%)", width: 320, height: 320, borderRadius: "50%", background: "radial-gradient(circle, " + cur.accent + "18 0%, transparent 70%)", transition: "background 0.5s", pointerEvents: "none" }} />
-      <div style={{ width: "100%", display: "flex", justifyContent: "flex-end", padding: "18px 22px 0", zIndex: 2 }}>
+      <div style={{ width: "100%", display: "flex", justifyContent: "flex-end", padding: "18px 22px 0", zIndex: 2, boxSizing: "border-box" }}>
         {!isLast && <button onClick={() => onFinish({ name: "Vous", devise: "EUR" })} style={{ background: "none", border: "none", color: "#e0e0e0", opacity: 0.4, fontSize: 12, cursor: "pointer", fontFamily: "Outfit,sans-serif", letterSpacing: 1 }}>Passer</button>}
       </div>
       <div style={{ flex: 1, display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: 40, paddingBottom: 16, animation: anim === "in" ? "obIn 0.3s cubic-bezier(0.22,1,0.36,1) both" : "obOut 0.22s ease-in both" }}>
@@ -703,7 +703,7 @@ function App({ onReset }) {
   const HBtnStyle = { width: 34, height: 34, borderRadius: 17, border: "none", background: "rgba(255,255,255,0.08)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" };
 
   return (
-    <div style={{ width: "100%", height: "100dvh", background: theme.bg, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
+    <div style={{ width: "100%", height: "100dvh", background: theme.bg, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative", paddingTop: "env(safe-area-inset-top, 0px)", paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
       <style>{CSS}</style>
 
       {!isOnline && (
@@ -1237,6 +1237,8 @@ const CSS = `
   .nav-btn:active { transform: scale(0.88) }
   ::-webkit-scrollbar { display: none }
   * { box-sizing: border-box; -webkit-font-smoothing: antialiased }
-  html, body { overflow: hidden; position: fixed; width: 100%; height: 100% }
+  html, body { overflow: hidden; position: fixed; width: 100%; height: 100%; background: #0a0a0a; }
+  html { height: -webkit-fill-available; }
+  body { min-height: -webkit-fill-available; }
   input::placeholder { color: rgba(255,255,255,0.22) }
 `;
