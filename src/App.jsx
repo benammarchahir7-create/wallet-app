@@ -468,7 +468,7 @@ export default function Root() {
 
 function App({ onReset }) {
   const [ticketsRaw,     setTickets]     = usePersist("wallet_tickets",  []);
-  const [foldersRaw,     setFolders]     = usePersist("wallet_folders",  INIT_FOLDERS);
+  const [foldersRaw,     setFolders]     = usePersist("wallet_folders",  []);
   const [uiTheme,        setUiTheme]     = usePersist("wallet_theme",    "classic");
   const [profileRaw,     setProfile]     = usePersist("wallet_profile",  { name: "Vous", devise: "EUR" });
   const [prefsRaw,       setPrefs]       = usePersist("wallet_prefs",    { notifUnread: true, notifBudget: false, budgetAlert: 500 });
@@ -509,7 +509,7 @@ function App({ onReset }) {
   const searchRef = useRef();
 
   const tickets     = Array.isArray(ticketsRaw) ? ticketsRaw : [];
-  const folders     = Array.isArray(foldersRaw) ? foldersRaw : INIT_FOLDERS;
+  const folders     = Array.isArray(foldersRaw) ? foldersRaw : [];
   const profile     = (profileRaw && typeof profileRaw === "object" && !Array.isArray(profileRaw)) ? { name: "Vous", devise: "EUR", ...profileRaw } : { name: "Vous", devise: "EUR" };
   const prefs       = (prefsRaw && typeof prefsRaw === "object" && !Array.isArray(prefsRaw)) ? { notifUnread: true, notifBudget: false, budgetAlert: 500, ...prefsRaw } : { notifUnread: true, notifBudget: false, budgetAlert: 500 };
   const theme       = THEMES[uiTheme] || THEMES.classic;
