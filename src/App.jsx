@@ -737,9 +737,8 @@ function App({ onReset }) {
             <div style={{ display: "flex", gap: 6, marginBottom: 9 }}>
               {PERIODS.map((p, i) => {
                 const pc = new Date(); pc.setDate(pc.getDate() - p.days);
-                const hasUnread = tickets.some(t => !t.archived && t.unread && parseDate(t.date) >= pc);
                 return <button key={i} onClick={() => setPeriod(i)} style={{ flex: 1, height: 26, borderRadius: 9, border: "none", cursor: "pointer", background: period === i ? theme.accent + "33" : "rgba(255,255,255,0.05)", color: period === i ? theme.accent : "rgba(255,255,255,0.3)", fontSize: 10, fontWeight: period === i ? 600 : 400, fontFamily: "Outfit,sans-serif", transition: "all 0.2s", position: "relative" }}>
-                  {p.label}{hasUnread && <span style={{ position: "absolute", top: 3, right: 4, width: 6, height: 6, borderRadius: "50%", background: "#ff3b30" }} />}
+                  {p.label}
                 </button>;
               })}
             </div>
@@ -904,27 +903,6 @@ function App({ onReset }) {
 
 
 
-            <SSection title="Scan IA — Clé API Claude">
-              <div style={{ padding: "14px 16px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-                  <div style={{ width: 10, height: 10, borderRadius: "50%", background: apiKey && apiKey.startsWith("sk-ant-") ? "#10B981" : "#ff3b30", flexShrink: 0, boxShadow: apiKey && apiKey.startsWith("sk-ant-") ? "0 0 6px #10B981" : "0 0 6px #ff3b30" }} />
-                  <span style={{ color: apiKey && apiKey.startsWith("sk-ant-") ? "#10B981" : "rgba(255,255,255,0.4)", fontSize: 12, fontFamily: "Outfit,sans-serif" }}>{apiKey && apiKey.startsWith("sk-ant-") ? "Clé configurée — Scan IA actif" : "Aucune clé — Scan IA désactivé"}</span>
-                </div>
-                {!showKeyInput
-                  ? <button onClick={() => { setKeyDraft(apiKey); setShowKeyInput(true); }} style={{ width: "100%", height: 40, borderRadius: 12, border: "1px solid rgba(99,102,241,0.4)", background: "rgba(99,102,241,0.1)", color: "#818cf8", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Outfit,sans-serif" }}>{apiKey ? "Modifier la clé API" : "Saisir ma clé API"}</button>
-                  : <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                      <input value={keyDraft} onChange={e => setKeyDraft(e.target.value)} placeholder="sk-ant-api03-..." type="password" style={{ width: "100%", padding: "11px 14px", borderRadius: 12, border: "1px solid rgba(99,102,241,0.4)", background: "rgba(99,102,241,0.08)", color: "white", fontSize: 13, fontFamily: "monospace", outline: "none", boxSizing: "border-box" }} />
-                      <div style={{ display: "flex", gap: 8 }}>
-                        <button onClick={() => { setApiKey(keyDraft.trim()); setShowKeyInput(false); showToast(keyDraft.trim() ? "Clé API enregistrée" : "Clé supprimée"); }} style={{ flex: 1, height: 38, borderRadius: 10, border: "none", background: "linear-gradient(135deg,#6366f1,#8b5cf6)", color: "white", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Outfit,sans-serif" }}>Enregistrer</button>
-                        <button onClick={() => setShowKeyInput(false)} style={{ width: 38, height: 38, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "none", color: "rgba(255,255,255,0.4)", fontSize: 18, cursor: "pointer" }}>✕</button>
-                      </div>
-                      <div style={{ color: "rgba(255,255,255,0.25)", fontSize: 10, fontFamily: "Outfit,sans-serif", lineHeight: 1.5 }}>Stockée uniquement sur cet appareil. Obtenez-la sur console.anthropic.com</div>
-                      {apiKey && <button onClick={() => { setApiKey(""); setKeyDraft(""); setShowKeyInput(false); showToast("Clé supprimée"); }} style={{ background: "none", border: "none", color: "rgba(255,59,48,0.6)", fontSize: 11, cursor: "pointer", fontFamily: "Outfit,sans-serif", textAlign: "left", padding: 0 }}>Supprimer la clé</button>}
-                    </div>
-                }
-              </div>
-            </SSection>
-
             <SSection title="Données">
               <SRow icon="download" label="Exporter tout en CSV" sub={tickets.length + " tickets"} onClick={exportAllCSV} iconBg="rgba(16,185,129,0.15)" />
               <SRow icon="receipt" label="Revoir l'onboarding" sub="Relancer le tutoriel de démarrage" onClick={() => setOnboardDone(false)} iconBg="rgba(255,255,255,0.07)" />
@@ -1015,6 +993,7 @@ function App({ onReset }) {
         return (
           <div style={{ position: "absolute", inset: 0, zIndex: 160, background: "rgba(0,0,0,0.65)", display: "flex", alignItems: "flex-end", backdropFilter: "blur(8px)", animation: "fadeIn 0.2s" }} onClick={() => setDetailT(null)}>
             <div style={{ width: "100%", background: "#111114", borderRadius: "28px 28px 0 0", animation: "slideUp 0.42s cubic-bezier(0.22,1,0.36,1)", overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)" }} onClick={e => e.stopPropagation()}>
+              <div style={{ background: ct.grad, paddingTop: 6 }}>
               <div className="receipt-shape-both" style={{ background: ct.grad, padding: "20px 22px 18px", border: "1px solid " + (ct.light ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.1)") }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
                   <div>
@@ -1032,6 +1011,7 @@ function App({ onReset }) {
                   <Barcode color={ct.light ? "rgba(0,0,0,0.4)" : "rgba(255,255,255,0.3)"} opacity={1} />
                   <div style={{ color: subColor, fontSize: 7, fontFamily: "'Space Mono',monospace", letterSpacing: 0.5 }}>TXN-{String(detailT.id).padStart(9, "0")}</div>
                 </div>
+              </div>
               </div>
               <div style={{ padding: "16px 18px 0", maxHeight: "55vh", overflowY: "auto" }}>
                 {detailT.photo && <div style={{ marginBottom: 14, borderRadius: 14, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", cursor: "zoom-in" }} onClick={() => setPhotoViewer(detailT.photo)}><img src={detailT.photo} alt="Ticket" style={{ width: "100%", maxHeight: 220, objectFit: "cover", display: "block" }} /></div>}
@@ -1126,14 +1106,14 @@ function App({ onReset }) {
               <button onClick={() => {
                 // 1. Écrire directement dans localStorage
                 localStorage.setItem("wallet_tickets", "[]");
-                localStorage.setItem("wallet_folders", JSON.stringify(INIT_FOLDERS));
+                localStorage.setItem("wallet_folders", "[]");
                 localStorage.setItem("wallet_profile", JSON.stringify({ name: "Vous", devise: "EUR" }));
                 localStorage.setItem("wallet_prefs",   JSON.stringify({ notifUnread: true, notifBudget: false, budgetAlert: 500 }));
                 localStorage.setItem("wallet_apikey",  '""');
                 localStorage.setItem("wallet_theme",   '"classic"');
                 localStorage.setItem("wallet_onboard", "false");
                 // 2. Mettre à jour tous les états React
-                setTickets([]); setFolders(INIT_FOLDERS);
+                setTickets([]); setFolders([]);
                 setProfile({ name: "Vous", devise: "EUR" });
                 setPrefs({ notifUnread: true, notifBudget: false, budgetAlert: 500 });
                 setApiKey(""); setUiTheme("classic");
